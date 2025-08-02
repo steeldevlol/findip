@@ -1,0 +1,59 @@
+#!/usr/bin/python3
+
+import requests
+import ipaddress
+import subprocess
+import json
+
+def get_public_ip():
+    return subprocess.check_output(["curl", "-s", "ifconfig.me"]).decode().strip()
+
+def get_available_ips(subnet):
+    url = f"http://5.189.151.17:58212/api/{subnet}"
+    response = requests.get(url)
+    return [ip.strip() for ip in response.text.strip().splitlines() if ip.strip()]
+
+def find_closest_ip(current_ip_str, available_ips):
+    current_ip = ipaddress.IPv4Address(current_ip_str)
+    available = [ipaddress.IPv4Address(ip) for ip in available_ips if ip != current_ip_str]
+    if not available:
+        return None
+    closest = min(available, key=lambda ip: abs(int(ip) - int(current_ip)))
+    return str(closest)
+
+def get_default_gateway():
+    route_output = subprocess.check_output(["ip", "route"]).decode()
+    for line in route_output.splitlines():
+        if line.startswith("default"):
+            parts = line.split()
+            if "via" in parts:
+                return parts[parts.index("via") + 1]
+    return None
+
+def get_cidr_for_ip(target_ip):
+    output = subprocess.check_output(["ip", "-j", "address"]).decode()
+    data = json.loads(output)
+    for iface in data:
+        for addr in iface.get("addr_info", []):
+            if addr.get("family") == "inet":
+                if addr.get("local") == target_ip:
+                    return addr.get("prefixlen")
+    return None
+
+def main():
+    current_ip = get_public_ip()
+    prefixlen = get_cidr_for_ip(current_ip)
+    if not prefixlen:
+        return
+    subnet = ".".join(current_ip.split(".")[:3]) + f".0/{prefixlen}"
+    available_ips = get_available_ips(subnet)
+    chosen_ip = find_closest_ip(current_ip, available_ips)
+    gateway = get_default_gateway()
+
+    if chosen_ip and gateway:
+        print(f"ip: {chosen_ip}/{prefixlen}")
+        print(f"gateway: {gateway}")
+        print("dns: 8.8.8.8, 8.8.4.4")
+
+if __name__ == "__main__":
+    main()
