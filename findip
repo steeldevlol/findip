@@ -4,6 +4,7 @@ import requests
 import ipaddress
 import subprocess
 import json
+import sys
 
 def get_public_ip():
     return subprocess.check_output(["curl", "-s", "ifconfig.me"]).decode().strip()
@@ -41,19 +42,29 @@ def get_cidr_for_ip(target_ip):
     return None
 
 def main():
+    show_all = "--all" in sys.argv
+
     current_ip = get_public_ip()
     prefixlen = get_cidr_for_ip(current_ip)
     if not prefixlen:
         return
     subnet = ".".join(current_ip.split(".")[:3]) + f".0/{prefixlen}"
     available_ips = get_available_ips(subnet)
-    chosen_ip = find_closest_ip(current_ip, available_ips)
     gateway = get_default_gateway()
 
-    if chosen_ip and gateway:
-        print(f"ip: {chosen_ip}/{prefixlen}")
-        print(f"gateway: {gateway}")
-        print("dns: 8.8.8.8, 8.8.4.4")
+    if show_all:
+        print("Available IPs:")
+        for ip in available_ips:
+            print(f"{ip}/{prefixlen}")
+        if gateway:
+            print(f"gateway: {gateway}")
+            print("dns: 8.8.8.8, 8.8.4.4")
+    else:
+        chosen_ip = find_closest_ip(current_ip, available_ips)
+        if chosen_ip and gateway:
+            print(f"ip: {chosen_ip}/{prefixlen}")
+            print(f"gateway: {gateway}")
+            print("dns: 8.8.8.8, 8.8.4.4")
 
 if __name__ == "__main__":
     main()
