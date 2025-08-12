@@ -53,7 +53,7 @@ def main():
     gateway = get_default_gateway()
 
     if show_all:
-        print("Available IPs:")
+        print("usable ips:")
         for ip in available_ips:
             print(f"{ip}/{prefixlen}")
         if gateway:
