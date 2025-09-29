@@ -7,7 +7,11 @@ import json
 import sys
 import os
 
-BLOCKLIST_FILE = "/tmp/blocked_ips.txt"
+CONFIG_DIR = os.path.expanduser("~/.config")
+BLOCKLIST_FILE = os.path.join(CONFIG_DIR, "blocked_ips.txt")
+
+if not os.path.exists(CONFIG_DIR):
+    os.makedirs(CONFIG_DIR)
 
 def get_public_ip():
     return subprocess.check_output(["curl", "-s", "ifconfig.me"]).decode().strip()
@@ -65,12 +69,12 @@ def main():
         try:
             block_arg = sys.argv[sys.argv.index("--block") + 1]
         except IndexError:
-            print("--block requires an ip")
+            print("Error: --block requires an IP address")
             return
 
     if block_arg:
         save_blocked_ip(block_arg)
-        print(f"blocked: {block_arg}")
+        print(f"Blocked IP: {block_arg}")
         return
 
     current_ip = get_public_ip()
@@ -98,7 +102,7 @@ def main():
             print(f"gateway: {gateway}")
             print("dns: 8.8.8.8, 8.8.4.4")
         else:
-            print("no available ip found (all may be blocked).")
+            print("No available IP found (all may be blocked).")
 
 if __name__ == "__main__":
     main()
